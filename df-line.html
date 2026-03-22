@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>なぜDFはラインを上げるの？</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #06101f;
+  font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+}
+
+.slide {
+  display: none;
+  width: min(920px, 100%);
+  min-height: 520px;
+  background: linear-gradient(150deg, #0d2050 0%, #091428 100%);
+  border-radius: 20px;
+  border: 2px solid #1e3d7a;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  padding: 44px 56px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+  animation: fadeIn 0.35s ease;
+}
+.slide.active { display: flex; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #4a8fd9;
+}
+
+h1 {
+  font-size: 50px;
+  font-weight: 900;
+  color: #ffd700;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 32px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.3;
+}
+
+.sub {
+  font-size: 20px;
+  color: #7aaee8;
+  line-height: 1.6;
+}
+
+.desc {
+  font-size: 18px;
+  color: #d0e4ff;
+  line-height: 1.8;
+  max-width: 680px;
+}
+
+.box {
+  border-radius: 14px;
+  padding: 14px 24px;
+  font-size: 18px;
+  font-weight: 700;
+  max-width: 640px;
+}
+.box-warn  { background: rgba(255,140,0,0.15);  border: 2px solid #ff8c00; color: #ffc04a; }
+.box-good  { background: rgba(50,205,50,0.12);  border: 2px solid #32cd32; color: #6dff6d; }
+.box-key   { background: rgba(100,149,237,0.15); border: 2px solid #6495ed; color: #a0c4ff; }
+
+.legend {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  font-size: 13px;
+  color: #8ab4e8;
+  flex-wrap: wrap;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+.dot-blue { background: #4fc3f7; }
+.dot-red  { background: #f87171; }
+.dot-ball { background: #ffd700; border-radius: 50%; }
+
+.quiz-row {
+  display: flex;
+  gap: 24px;
+  width: 100%;
+  justify-content: center;
+}
+.quiz-card {
+  flex: 1;
+  max-width: 380px;
+  background: #0a1a3a;
+  border: 2px solid #1e3d7a;
+  border-radius: 16px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.quiz-card:hover { border-color: #4a8fd9; transform: translateY(-3px); }
+.quiz-card.correct { border-color: #32cd32; background: rgba(50,205,50,0.12); }
+.quiz-card.wrong   { border-color: #f87171; background: rgba(248,113,113,0.10); }
+.quiz-label { font-size: 22px; font-weight: 900; color: #ffd700; margin-bottom: 10px; }
+
+.answer-msg {
+  font-size: 22px;
+  font-weight: 800;
+  color: #6dff6d;
+  display: none;
+  margin-top: 4px;
+}
+.answer-msg.show { display: block; }
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.nav button {
+  background: #1a3870;
+  color: #c0d8ff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 26px;
+  font-size: 17px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+.nav button:hover:not(:disabled) { background: #264f9e; }
+.nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+.page-num { color: #5a88cc; font-size: 15px; min-width: 60px; text-align: center; }
+
+#lang-btn {
+  background: #1a3870;
+  color: #ffd700;
+  border: 1px solid #4a8fd9;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+#lang-btn:hover { background: #264f9e; }
+
+.big-emoji { font-size: 60px; }
+.summary-list {
+  text-align: left;
+  font-size: 19px;
+  color: #d0e4ff;
+  line-height: 2;
+  list-style: none;
+}
+.summary-list li::before { content: "✅ "; }
+
+/* ===== スマホ対応 ===== */
+@media (max-width: 600px) {
+  body { padding: 12px; gap: 12px; }
+
+  .slide {
+    padding: 28px 20px;
+    min-height: unset;
+    border-radius: 14px;
+    gap: 14px;
+  }
+
+  h1 { font-size: 30px; }
+  h2 { font-size: 22px; }
+  .sub { font-size: 15px; }
+  .desc { font-size: 14px; }
+  .box { font-size: 14px; padding: 10px 16px; }
+  .big-emoji { font-size: 44px; }
+  .summary-list { font-size: 14px; line-height: 1.9; }
+
+  .quiz-row { flex-direction: column; align-items: center; }
+  .quiz-card { max-width: 100%; width: 100%; }
+  .quiz-label { font-size: 18px; }
+  .answer-msg { font-size: 16px; }
+
+  .nav button { padding: 8px 18px; font-size: 15px; }
+  .page-num { font-size: 13px; }
+  .legend { font-size: 11px; gap: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== SLIDE 1: タイトル ===== -->
+<div class="slide active" id="slide-1">
+
+  <div class="big-emoji">⚽</div>
+  <h1 data-ja-html="なぜDFは<br>ラインを上げるの？" data-en-html="Why Do DFs<br>Push Up?">なぜDFは<br>ラインを上げるの？</h1>
+  <p class="sub" data-ja="ラインを上げる理由を学ぼう！" data-en="Let's find out why together!">ラインを上げる理由を学ぼう！</p>
+  <p class="desc" id="nav-hint" style="font-size:16px; color:#5a88cc;" data-ja="← → キーまたはボタンで進む" data-en="Use ← → keys or buttons to navigate">← → キーまたはボタンで進む</p>
+</div>
+
+<!-- ===== SLIDE 2: DFが上がっていない（V1） ===== -->
+<div class="slide" id="slide-2">
+  <div class="badge" data-ja="こんなシーン、あるかな？" data-en="Have you seen this?">こんなシーン、あるかな？</div>
+  <h2 data-ja-html="DFが後ろに のこったまま…" data-en-html="The DFs stayed back…">DFが後ろに のこったまま…</h2>
+  <p class="desc" data-ja-html="DFがクリアしてあいての<strong style='color:#ffd700;'>エリア</strong>にボールが入ったのに、DFがのこったまま！" data-en-html="A DF clears the ball into the <strong style='color:#ffd700;'>opponent's area</strong>.<br>But the DFs stayed back!">DFがクリアしてあいての<strong style="color:#ffd700;">エリア</strong>にボールが入ったのに、DFがのこったまま！</p>
+
+  <svg viewBox="0 0 580 280" style="width:100%;max-width:600px;" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="540" height="260" fill="#2a7a3e" rx="4"/>
+    <rect x="20" y="10" width="540" height="260" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <line x1="290" y1="10" x2="290" y2="270" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <circle cx="290" cy="140" r="38" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="20" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="488" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="5" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <rect x="560" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <text x="290" y="292" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" data-ja="← じぶんのはんぶん　　あいてのはんぶん →" data-en="← Own half　　Opponent's half →">← じぶんのはんぶん　　あいてのはんぶん →</text>
+    <!-- GK -->
+    <circle cx="50" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="50" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <!-- DF both staying back -->
+    <circle cx="125" cy="110" r="16" fill="#4fc3f7" stroke="#ff8c00" stroke-width="3"/>
+    <text x="125" y="115" text-anchor="middle" fill="white" font-size="10" font-weight="bold">DF</text>
+    <circle cx="125" cy="170" r="16" fill="#4fc3f7" stroke="#ff8c00" stroke-width="3"/>
+    <text x="125" y="175" text-anchor="middle" fill="white" font-size="10" font-weight="bold">DF</text>
+    <rect x="94" y="84" width="62" height="17" fill="white" rx="4"/>
+    <text x="125" y="96" text-anchor="middle" fill="#ff8c00" font-size="11" font-weight="bold" data-ja="のこってる！" data-en="Staying back!">のこってる！</text>
+    <!-- MF -->
+    <circle cx="315" cy="108" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="315" y="113" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="315" cy="172" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="315" y="177" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <!-- FW -->
+    <circle cx="415" cy="108" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="415" y="113" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <circle cx="415" cy="172" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="415" y="177" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <!-- Red GK -->
+    <circle cx="530" cy="140" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="530" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <!-- 相手ラベル -->
+    <rect x="505" y="100" width="50" height="16" fill="#f87171" rx="3"/>
+    <text x="530" y="112" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="あいて" data-en="Opponent">あいて</text>
+    <!-- Red MF -->
+    <circle cx="370" cy="108" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="370" y="113" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="370" cy="172" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="370" y="177" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <!-- Ball -->
+    <text x="445" y="140" text-anchor="middle" dominant-baseline="central" font-size="18">⚽</text>
+  </svg>
+
+  <div class="legend">
+    <span class="legend-item"><span class="dot dot-blue"></span> <span data-ja="青チーム（自分たち）" data-en="Blue team (your side)">青チーム（自分たち）</span></span>
+    <span class="legend-item"><span class="dot dot-red"></span> <span data-ja="赤チーム（あいて）" data-en="Red team (opponent)">赤チーム（あいて）</span></span>
+  </div>
+</div>
+
+<!-- ===== SLIDE 3: 前にスペースがある（V1） ===== -->
+<div class="slide" id="slide-3">
+  <div class="badge" data-ja="なぜあぶないの？" data-en="Why is it dangerous?">なぜあぶないの？</div>
+  <h2 data-ja-html="まんなかに大きなスペースができる！" data-en-html="A big <span style='color:#ff8c00;'>space</span> opens up!">まんなかに大きなスペースができる！</h2>
+  <p class="desc" data-ja-html="DFが後ろにいると、まんなかにスペースができるよ！" data-en-html="When DFs stay back, a big space opens up in the middle.<br><strong style='color:#ff8c00;'>That space is a big chance for the other team!</strong>">DFが後ろにいると、まんなかにスペースができるよ！</p>
+
+  <svg viewBox="0 0 580 280" style="width:100%;max-width:600px;" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="540" height="260" fill="#2a7a3e" rx="4"/>
+    <rect x="20" y="10" width="540" height="260" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <line x1="290" y1="10" x2="290" y2="270" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <circle cx="290" cy="140" r="38" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="20" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="488" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="5" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <rect x="560" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <text x="290" y="292" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" data-ja="← じぶんのはんぶん　　あいてのはんぶん →" data-en="← Own half　　Opponent's half →">← じぶんのはんぶん　　あいてのはんぶん →</text>
+    <!-- Space highlight between DF (x=125) and MF (x=315) -->
+    <rect x="143" y="75" width="156" height="130" fill="rgba(255,140,0,0.25)" stroke="#ff8c00" stroke-width="2" stroke-dasharray="6,4" rx="6"/>
+    <text x="221" y="135" text-anchor="middle" fill="#ff8c00" font-size="14" font-weight="bold" data-ja="スペース" data-en="Space">スペース</text>
+    <text x="221" y="153" text-anchor="middle" fill="#ff8c00" font-size="13" data-ja="⚠️ ここがあぶない！" data-en="⚠️ Danger zone!">⚠️ ここがあぶない！</text>
+    <!-- Blue team -->
+    <circle cx="50" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="50" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <circle cx="125" cy="110" r="16" fill="#4fc3f7" stroke="#ff8c00" stroke-width="3"/>
+    <text x="125" y="115" text-anchor="middle" fill="white" font-size="10" font-weight="bold">DF</text>
+    <circle cx="125" cy="170" r="16" fill="#4fc3f7" stroke="#ff8c00" stroke-width="3"/>
+    <text x="125" y="175" text-anchor="middle" fill="white" font-size="10" font-weight="bold">DF</text>
+    <circle cx="315" cy="108" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="315" y="113" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="315" cy="172" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="315" y="177" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="415" cy="108" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="415" y="113" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <circle cx="415" cy="172" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="415" y="177" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <!-- Red team -->
+    <circle cx="530" cy="140" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="530" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <rect x="505" y="100" width="50" height="16" fill="#f87171" rx="3"/>
+    <text x="530" y="112" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="あいて" data-en="Opponent">あいて</text>
+    <circle cx="370" cy="108" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="370" y="113" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="370" cy="172" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="370" y="177" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <!-- Ball -->
+    <text x="445" y="140" text-anchor="middle" dominant-baseline="central" font-size="18">⚽</text>
+  </svg>
+
+  <div class="box box-warn" data-ja="スペースができると あいてのチャンスになる！" data-en="Big space = A big chance for the other team!">スペースができると あいてのチャンスになる！</div>
+</div>
+
+<!-- ===== SLIDE 4: 失点のしくみ（V1） ===== -->
+<div class="slide" id="slide-4">
+  <div class="badge" data-ja="点をとられるしくみ" data-en="How they score!">点をとられるしくみ</div>
+  <h2 data-ja-html="こうして 点をとられる！" data-en-html="This is how they <span style='color:#f87171;'>score!</span>">こうして 点をとられる！</h2>
+  <p class="desc" data-ja-html="あいてがパス！DFは遠くて よせられない。" data-en-html="The opponent passes! The DFs are too far away.<br><strong style='color:#f87171;'>The FW gets the ball free — and scores!</strong>">あいてがパス！DFは遠くて よせられない。</p>
+
+  <svg viewBox="0 0 580 280" style="width:100%;max-width:600px;" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="540" height="260" fill="#2a7a3e" rx="4"/>
+    <rect x="20" y="10" width="540" height="260" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <line x1="290" y1="10" x2="290" y2="270" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <circle cx="290" cy="140" r="38" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="20" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="488" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="5" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <rect x="560" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <text x="290" y="292" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" data-ja="← じぶんのはんぶん　　あいてのはんぶん →" data-en="← Own half　　Opponent's half →">← じぶんのはんぶん　　あいてのはんぶん →</text>
+    <!-- Pass arrow from opponent MF (370,140) to FW in space (215,140) -->
+    <defs>
+      <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#f87171"/>
+      </marker>
+    </defs>
+    <line x1="355" y1="140" x2="230" y2="140" stroke="#f87171" stroke-width="3" stroke-dasharray="8,4" marker-end="url(#arrow)"/>
+    <!-- Blue team -->
+    <circle cx="50" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="50" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <circle cx="125" cy="110" r="16" fill="#4fc3f7" stroke="#ff8c00" stroke-width="2"/>
+    <text x="125" y="115" text-anchor="middle" fill="white" font-size="10" font-weight="bold">DF</text>
+    <circle cx="125" cy="170" r="16" fill="#4fc3f7" stroke="#ff8c00" stroke-width="2"/>
+    <text x="125" y="175" text-anchor="middle" fill="white" font-size="10" font-weight="bold">DF</text>
+    <rect x="60" y="76" width="130" height="17" fill="white" rx="4"/>
+    <text x="125" y="88" text-anchor="middle" fill="#ff8c00" font-size="11" data-ja="遠くて よせられない！" data-en="Too far away!">遠くて よせられない！</text>
+    <circle cx="315" cy="108" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="315" y="113" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="315" cy="172" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="315" y="177" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="415" cy="108" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="415" y="113" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <circle cx="415" cy="172" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="415" y="177" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <!-- Red team -->
+    <circle cx="530" cy="140" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="530" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <rect x="505" y="100" width="50" height="16" fill="#f87171" rx="3"/>
+    <text x="530" y="112" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="あいて" data-en="Opponent">あいて</text>
+    <circle cx="370" cy="140" r="16" fill="#f87171" stroke="#ffd700" stroke-width="3"/>
+    <text x="370" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <!-- FW free in space -->
+    <circle cx="215" cy="140" r="18" fill="#f87171" stroke="#ff4444" stroke-width="3"/>
+    <text x="215" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <text x="215" y="167" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold" data-ja="フリー！" data-en="Free!">フリー！</text>
+    <!-- Ball at arrowhead (receiving end) -->
+    <text x="235" y="122" text-anchor="middle" dominant-baseline="central" font-size="16">⚽</text>
+    <!-- パス！ラベル（最前面） -->
+    <rect x="268" y="110" width="50" height="16" fill="white" rx="4"/>
+    <text x="293" y="122" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold" data-ja="パス！" data-en="Pass!">パス！</text>
+  </svg>
+
+  <div class="box box-warn" data-ja="スペースがあると あいてFWが じゆうに ボールをもらえる → 点をとられる！" data-en="Big space = FW gets the ball free → They score!">スペースがあると あいてFWが じゆうに ボールをもらえる → 点をとられる！</div>
+</div>
+
+<!-- ===== SLIDE 5: 左DFだけが残ったまま ===== -->
+<div class="slide" id="slide-5">
+  <div class="badge" data-ja="こんなシーン、あるかな？" data-en="Have you seen this?">こんなシーン、あるかな？</div>
+  <h2 data-ja-html="1人だけ のこってしまった…" data-en-html="One DF <span style='color:#ff8c00;'>stayed back!</span>">1人だけ のこってしまった…</h2>
+  <p class="desc" data-ja-html="1人のDFがあがったのに、もう1人がのこってしまった！" data-en-html="The ball went into the <strong style='color:#ffd700;'>opponent's area</strong>.<br>One DF pushed up, but <strong style='color:#ff8c00;'>the other DF stayed back…</strong>">1人のDFがあがったのに、もう1人がのこってしまった！</p>
+
+  <svg viewBox="0 0 580 280" style="width:100%;max-width:600px;" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="540" height="260" fill="#2a7a3e" rx="4"/>
+    <rect x="20" y="10" width="540" height="260" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <line x1="290" y1="10" x2="290" y2="270" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <circle cx="290" cy="140" r="38" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="20" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="488" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="5" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <rect x="560" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <text x="290" y="292" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" data-ja="← じぶんのはんぶん　　あいてのはんぶん →" data-en="← Own half　　Opponent's half →">← じぶんのはんぶん　　あいてのはんぶん →</text>
+    <!-- GK -->
+    <circle cx="50" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="50" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <!-- 左DF stays back -->
+    <circle cx="125" cy="110" r="16" fill="#4fc3f7" stroke="#ff8c00" stroke-width="3"/>
+    <text x="125" y="115" text-anchor="middle" fill="white" font-size="9" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <rect x="94" y="82" width="62" height="17" fill="white" rx="4"/>
+    <text x="125" y="94" text-anchor="middle" fill="#ff8c00" font-size="11" font-weight="bold" data-ja="のこってる！" data-en="Staying back!">のこってる！</text>
+    <!-- Ghost: 右DFの元の位置 -->
+    <defs>
+      <marker id="arrow-green-s6" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#6dff6d"/>
+      </marker>
+    </defs>
+    <circle cx="125" cy="170" r="16" fill="none" stroke="rgba(79,195,247,0.4)" stroke-width="2" stroke-dasharray="4,3"/>
+    <line x1="142" y1="170" x2="249" y2="170" stroke="#6dff6d" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-green-s6)"/>
+    <!-- 右DF pushed up -->
+    <circle cx="265" cy="170" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="265" y="175" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <!-- MF -->
+    <circle cx="340" cy="120" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="340" y="125" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="340" cy="165" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="340" y="170" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <!-- FW -->
+    <circle cx="430" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="430" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <!-- Red GK -->
+    <circle cx="530" cy="140" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="530" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <rect x="505" y="100" width="50" height="16" fill="#f87171" rx="3"/>
+    <text x="530" y="112" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="あいて" data-en="Opponent">あいて</text>
+    <!-- Red MF -->
+    <circle cx="380" cy="120" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="380" y="125" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="380" cy="165" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="380" y="170" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <!-- Ball -->
+    <text x="450" y="140" text-anchor="middle" dominant-baseline="central" font-size="18">⚽</text>
+
+  </svg>
+
+  <div class="legend">
+    <span class="legend-item"><span class="dot dot-blue"></span> <span data-ja="青チーム（自分たち）" data-en="Blue team (your side)">青チーム（自分たち）</span></span>
+    <span class="legend-item"><span class="dot dot-red"></span> <span data-ja="赤チーム（あいて）" data-en="Red team (opponent)">赤チーム（あいて）</span></span>
+  </div>
+</div>
+
+<!-- ===== SLIDE 6: スペースが生まれる（左DF残りパターン） ===== -->
+<div class="slide" id="slide-6">
+  <div class="badge" data-ja="なぜあぶないの？" data-en="Why is it dangerous?">なぜあぶないの？</div>
+  <h2 data-ja-html="オフサイドラインが 低いまま！" data-en-html="The offside line stays <span style='color:#ff8c00;'>low!</span>">オフサイドラインが 低いまま！</h2>
+  <p class="desc" data-ja-html="1人だけのこると、その後ろが ぜんぶあぶないスペースに！" data-en-html="If one DF stays back, all the space behind them becomes dangerous!">1人だけのこると、その後ろが ぜんぶあぶないスペースに！</p>
+
+  <svg viewBox="0 0 580 280" style="width:100%;max-width:600px;" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="540" height="260" fill="#2a7a3e" rx="4"/>
+    <rect x="20" y="10" width="540" height="260" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <line x1="290" y1="10" x2="290" y2="270" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <circle cx="290" cy="140" r="38" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="20" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="488" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="5" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <rect x="560" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <text x="290" y="292" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" data-ja="← じぶんのはんぶん　　あいてのはんぶん →" data-en="← Own half　　Opponent's half →">← じぶんのはんぶん　　あいてのはんぶん →</text>
+    <!-- Space highlight: full vertical band -->
+    <rect x="143" y="12" width="105" height="254" fill="rgba(255,140,0,0.20)" stroke="#ff8c00" stroke-width="2" stroke-dasharray="6,4" rx="6"/>
+    <text x="196" y="60" text-anchor="middle" fill="#ff8c00" font-size="13" font-weight="bold" data-ja="⚠️ ぜんぶあぶない！" data-en="⚠️ All Dangerous!">⚠️ ぜんぶあぶない！</text>
+    <text x="196" y="80" text-anchor="middle" fill="#ff8c00" font-size="11" data-ja="のこったDFのせいで" data-en="Because of the DF who stayed back">のこったDFのせいで</text>
+    <text x="196" y="96" text-anchor="middle" fill="#ff8c00" font-size="11" data-ja="ここぜんぶが" data-en="All of this is">ここぜんぶが</text>
+    <text x="196" y="112" text-anchor="middle" fill="#ff8c00" font-size="11" data-ja="オンサイド！" data-en="Onside!">オンサイド！</text>
+    <!-- Blue team -->
+    <circle cx="50" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="50" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <circle cx="125" cy="110" r="16" fill="#4fc3f7" stroke="#ff8c00" stroke-width="3"/>
+    <text x="125" y="115" text-anchor="middle" fill="white" font-size="9" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <circle cx="265" cy="170" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="265" y="175" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <circle cx="340" cy="120" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="340" y="125" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="340" cy="165" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="340" y="170" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="430" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="430" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <!-- Red team -->
+    <circle cx="530" cy="140" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="530" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <rect x="505" y="100" width="50" height="16" fill="#f87171" rx="3"/>
+    <text x="530" y="112" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="あいて" data-en="Opponent">あいて</text>
+    <circle cx="380" cy="120" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="380" y="125" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="380" cy="165" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="380" y="170" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <!-- Ball -->
+    <text x="450" y="140" text-anchor="middle" dominant-baseline="central" font-size="18">⚽</text>
+  </svg>
+
+  <div class="box box-warn" data-ja="のこったDFのせいで あぶないスペースが広がる！" data-en="One DF stays back → Dangerous space opens up everywhere!">のこったDFのせいで あぶないスペースが広がる！</div>
+</div>
+
+<!-- ===== SLIDE 7: 失点のしくみ（左DF残りパターン） ===== -->
+<div class="slide" id="slide-7">
+  <div class="badge" data-ja="点をとられるしくみ" data-en="How they score!">点をとられるしくみ</div>
+  <h2 data-ja-html="こうして 点をとられる！" data-en-html="The opponent <span style='color:#f87171;'>uses the space!</span>">こうして 点をとられる！</h2>
+  <p class="desc" data-ja-html="あいてMFが うらにパス！もう1人のDFは遠すぎて 間に合わない。" data-en-html="The opponent's MF passes behind the DF!<br>The other DF can't make it — <strong style='color:#f87171;'>the FW gets the ball free and scores!</strong>">あいてMFが うらにパス！もう1人のDFは遠すぎて 間に合わない。</p>
+
+  <svg viewBox="0 0 580 280" style="width:100%;max-width:600px;" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="540" height="260" fill="#2a7a3e" rx="4"/>
+    <rect x="20" y="10" width="540" height="260" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <line x1="290" y1="10" x2="290" y2="270" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <circle cx="290" cy="140" r="38" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="20" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="488" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="5" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <rect x="560" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <text x="290" y="292" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" data-ja="← じぶんのはんぶん　　あいてのはんぶん →" data-en="← Own half　　Opponent's half →">← じぶんのはんぶん　　あいてのはんぶん →</text>
+    <!-- Pass arrow -->
+    <defs>
+      <marker id="arrow8" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#f87171"/>
+      </marker>
+    </defs>
+    <line x1="362" y1="140" x2="220" y2="140" stroke="#f87171" stroke-width="3" stroke-dasharray="8,4" marker-end="url(#arrow8)"/>
+    <!-- Blue team -->
+    <circle cx="50" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="50" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <circle cx="125" cy="110" r="16" fill="#4fc3f7" stroke="#ff8c00" stroke-width="2"/>
+    <text x="125" y="115" text-anchor="middle" fill="white" font-size="9" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <rect x="64" y="123" width="52" height="15" fill="white" rx="4"/>
+    <text x="90" y="135" text-anchor="middle" fill="#ff8c00" font-size="10" data-ja="遠すぎ…" data-en="Too far…">遠すぎ…</text>
+    <circle cx="265" cy="170" r="16" fill="#4fc3f7" stroke="#ff8c00" stroke-width="2"/>
+    <text x="265" y="175" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <rect x="222" y="183" width="86" height="15" fill="white" rx="4"/>
+    <text x="265" y="195" text-anchor="middle" fill="#ff8c00" font-size="10" data-ja="間に合わない！" data-en="Can't make it!">間に合わない！</text>
+    <circle cx="340" cy="108" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="340" y="113" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="340" cy="175" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="340" y="180" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="430" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="430" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <!-- Red team -->
+    <circle cx="530" cy="140" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="530" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <rect x="505" y="100" width="50" height="16" fill="#f87171" rx="3"/>
+    <text x="530" y="112" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="あいて" data-en="Opponent">あいて</text>
+    <circle cx="380" cy="140" r="16" fill="#f87171" stroke="#ffd700" stroke-width="3"/>
+    <text x="380" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="200" cy="140" r="18" fill="#f87171" stroke="#ff4444" stroke-width="3"/>
+    <text x="200" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <rect x="172" y="157" width="56" height="15" fill="white" rx="4"/>
+    <text x="200" y="168" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold" data-ja="フリー！" data-en="Free!">フリー！</text>
+    <!-- Ball at arrowhead (receiving end) -->
+    <text x="222" y="122" text-anchor="middle" dominant-baseline="central" font-size="16">⚽</text>
+    <!-- 右DFの裏へパス！ラベル（最前面） -->
+    <rect x="232" y="116" width="126" height="16" fill="white" rx="4"/>
+    <text x="295" y="128" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold" data-ja="みぎDFのうらへパス！" data-en="Pass behind the DF!">みぎDFのうらへパス！</text>
+  </svg>
+
+  <div class="box box-warn" data-ja="はなれているせいで あいてFWが じゆうに ボールをもらえる → 点をとられる！" data-en="DF too far back → FW gets ball free → They score!">はなれているせいで あいてFWが じゆうに ボールをもらえる → 点をとられる！</div>
+</div>
+
+<!-- ===== SLIDE 8: 正解！ ===== -->
+<div class="slide" id="slide-8">
+  <div class="badge" data-ja="正かいはこれ！" data-en="The answer!">正かいはこれ！</div>
+  <h2 data-ja-html="DFのラインを そろえよう！" data-en-html="<span style='color:#6dff6d;'>Line up together!</span>">DFのラインを そろえよう！</h2>
+  <p class="desc" data-ja-html="ボールがすすんだら DFもいっしょにあがる！スペースがなくなるよ！" data-en-html="When the ball goes forward, <strong style='color:#6dff6d;'>DFs push up together!</strong><br>Keeping the line together closes down all the space.">ボールがすすんだら DFもいっしょにあがる！スペースがなくなるよ！</p>
+
+  <svg viewBox="0 0 580 280" style="width:100%;max-width:600px;" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="540" height="260" fill="#2a7a3e" rx="4"/>
+    <rect x="20" y="10" width="540" height="260" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <line x1="290" y1="10" x2="290" y2="270" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <circle cx="290" cy="140" r="38" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="20" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="488" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="5" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <rect x="560" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <text x="290" y="292" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" data-ja="← じぶんのはんぶん　　あいてのはんぶん →" data-en="← Own half　　Opponent's half →">← じぶんのはんぶん　　あいてのはんぶん →</text>
+    <!-- Compact highlight -->
+    <rect x="272" y="60" width="198" height="160" fill="rgba(50,205,50,0.12)" stroke="#32cd32" stroke-width="2" stroke-dasharray="6,4" rx="8"/>
+    <text x="371" y="54" text-anchor="middle" fill="#32cd32" font-size="13" font-weight="bold" data-ja="コンパクト！✨" data-en="Compact! ✨">コンパクト！✨</text>
+    <defs>
+      <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#6dff6d"/>
+      </marker>
+    </defs>
+    <!-- Ghost: 元の位置（スライド2） -->
+    <circle cx="125" cy="110" r="16" fill="none" stroke="rgba(79,195,247,0.4)" stroke-width="2" stroke-dasharray="4,3"/>
+    <circle cx="125" cy="170" r="16" fill="none" stroke="rgba(79,195,247,0.4)" stroke-width="2" stroke-dasharray="4,3"/>
+    <!-- 移動の点線矢印 -->
+    <line x1="142" y1="110" x2="277" y2="110" stroke="#6dff6d" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-green)"/>
+    <line x1="142" y1="170" x2="277" y2="170" stroke="#6dff6d" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-green)"/>
+    <!-- GK -->
+    <circle cx="65" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="65" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <!-- DF x=295（ライン揃え） -->
+    <circle cx="295" cy="110" r="16" fill="#4fc3f7" stroke="#32cd32" stroke-width="3"/>
+    <text x="295" y="115" text-anchor="middle" fill="white" font-size="9" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <circle cx="295" cy="170" r="16" fill="#4fc3f7" stroke="#32cd32" stroke-width="3"/>
+    <text x="295" y="175" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <text x="295" y="205" text-anchor="middle" fill="white" font-size="11" data-ja="まとまってうごく！" data-en="Move as one!">まとまってうごく！</text>
+    <!-- MF -->
+    <circle cx="360" cy="120" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="360" y="125" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="360" cy="165" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="360" y="170" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <!-- FW -->
+    <circle cx="440" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="440" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <!-- Red team -->
+    <circle cx="530" cy="140" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="530" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <rect x="505" y="100" width="50" height="16" fill="#f87171" rx="3"/>
+    <text x="530" y="112" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="あいて" data-en="Opponent">あいて</text>
+    <circle cx="390" cy="120" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="390" y="125" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="390" cy="165" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="390" y="170" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <!-- Ball -->
+    <text x="455" y="140" text-anchor="middle" dominant-baseline="central" font-size="18">⚽</text>
+  </svg>
+
+  <div class="box box-good" data-ja="ラインをそろえると スペースがなくなる！" data-en="DFs line up → Space disappears → No room for the opponent!">ラインをそろえると スペースがなくなる！</div>
+</div>
+
+<!-- ===== SLIDE 9: メリット①：DFが高いとすぐプレスできる ===== -->
+<div class="slide" id="slide-9">
+  <div class="badge" data-ja="ラインを上げるといいこと①" data-en="Good thing about pushing up ①">ラインを上げるといいこと①</div>
+  <h2 data-ja-html="DFが高いと<span style='color:#6dff6d;'>すぐプレスできる！</span>" data-en-html="Push up and <span style='color:#6dff6d;'>press right away!</span>">DFが高いと<span style="color:#6dff6d;">すぐプレスできる！</span></h2>
+  <p class="desc" data-ja-html="DFのラインが高いと、相手のフォワードとの距離が近い！ボールをもらった瞬間にすぐよせられるから、相手を自由にさせないよ！" data-en-html="When the DFs' line is high, they're close to the opponent's FW!<br>They can <strong style='color:#6dff6d;'>press right when the ball arrives!</strong>">DFのラインが高いと、相手のフォワードとの距離が近い！ボールをもらった瞬間にすぐよせられるから、相手を自由にさせないよ！</p>
+
+  <svg viewBox="0 0 580 280" style="width:100%;max-width:600px;" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="540" height="260" fill="#2a7a3e" rx="4"/>
+    <rect x="20" y="10" width="540" height="260" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <line x1="290" y1="10" x2="290" y2="270" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <circle cx="290" cy="140" r="38" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="20" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="488" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="5" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <rect x="560" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <text x="290" y="292" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" data-ja="← じぶんのはんぶん　　あいてのはんぶん →" data-en="← Own half　　Opponent's half →">← じぶんのはんぶん　　あいてのはんぶん →</text>
+    <!-- GK -->
+    <circle cx="50" cy="140" r="16" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="50" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <!-- DFs pushed up (high line) -->
+    <circle cx="295" cy="115" r="16" fill="#4fc3f7" stroke="#32cd32" stroke-width="2.5"/>
+    <text x="295" y="120" text-anchor="middle" fill="white" font-size="9" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <circle cx="280" cy="165" r="16" fill="#4fc3f7" stroke="#32cd32" stroke-width="2.5"/>
+    <text x="280" y="170" text-anchor="middle" fill="white" font-size="9" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <rect x="242" y="187" width="72" height="15" fill="white" rx="4"/>
+    <text x="278" y="198" text-anchor="middle" fill="#32cd32" font-size="11" font-weight="bold" data-ja="✅ 高い！" data-en="✅ High line!">✅ 高い！</text>
+    <!-- Opponent FW with ball (close to DFs) -->
+    <circle cx="355" cy="140" r="18" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="355" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">FW</text>
+    <text x="375" y="122" text-anchor="middle" dominant-baseline="central" font-size="18">⚽</text>
+    <!-- Press arrows -->
+    <defs>
+      <marker id="arrow10" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L7,3 z" fill="#32cd32"/>
+      </marker>
+      <marker id="arrow10-pass" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L7,3 z" fill="#f87171"/>
+      </marker>
+    </defs>
+    <line x1="312" y1="124" x2="336" y2="133" stroke="#32cd32" stroke-width="2.5" marker-end="url(#arrow10)"/>
+    <line x1="296" y1="154" x2="334" y2="147" stroke="#32cd32" stroke-width="2.5" marker-end="url(#arrow10)"/>
+    <rect x="312" y="160" width="86" height="16" fill="white" rx="4"/>
+    <text x="355" y="172" text-anchor="middle" fill="#32cd32" font-size="12" font-weight="bold" data-ja="すぐプレス！" data-en="Press now!">すぐプレス！</text>
+    <!-- Red MF -->
+    <circle cx="430" cy="120" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="430" y="125" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <!-- Pass arrow: right MF → ball -->
+    <line x1="414" y1="121" x2="386" y2="122" stroke="#f87171" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrow10-pass)"/>
+    <circle cx="430" cy="163" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="430" y="168" text-anchor="middle" fill="white" font-size="10" font-weight="bold">MF</text>
+    <circle cx="530" cy="140" r="16" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="530" y="145" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GK</text>
+    <rect x="505" y="100" width="50" height="16" fill="#f87171" rx="3"/>
+    <text x="530" y="112" text-anchor="middle" fill="white" font-size="10" font-weight="bold" data-ja="あいて" data-en="Opponent">あいて</text>
+  </svg>
+
+  <div class="box box-good" data-ja="ラインが高い → あいてが近い → すぐプレスできる！" data-en="High line = Close to FW = Press right away!">ラインが高い → あいてが近い → すぐプレスできる！</div>
+</div>
+
+<!-- ===== SLIDE 10: メリット②：オフサイドで相手FWが後ろで待てない ===== -->
+<div class="slide" id="slide-10">
+  <div class="badge" data-ja="ラインを上げるといいこと②" data-en="Good thing about pushing up ②">ラインを上げるといいこと②</div>
+  <h2 data-ja-html="あいてFWが後ろで まてない！" data-en-html="The opponent FW <span style='color:#6dff6d;'>can't wait behind!</span>">あいてFWが後ろで まてない！</h2>
+  <p class="desc" data-ja-html="DFがあがると オフサイドラインもあがる。あいてFWは後ろで まてない！" data-en-html="When DFs push up, the offside line goes up too.<br><strong style='color:#f87171;'>The opponent FW can't wait behind the line!</strong>">DFがあがると オフサイドラインもあがる。あいてFWは後ろで まてない！</p>
+
+  <svg viewBox="0 0 580 280" style="width:100%;max-width:600px;" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="540" height="260" fill="#2a7a3e" rx="4"/>
+    <rect x="20" y="10" width="540" height="260" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <line x1="290" y1="10" x2="290" y2="270" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+    <circle cx="290" cy="140" r="38" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="20" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="488" y="88" width="72" height="104" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+    <rect x="5" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <rect x="560" y="115" width="15" height="50" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+    <text x="290" y="292" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" data-ja="← じぶんのはんぶん　　あいてのはんぶん →" data-en="← Own half　　Opponent's half →">← じぶんのはんぶん　　あいてのはんぶん →</text>
+    <!-- Offside line at x=310 (through the DFs) -->
+    <line x1="310" y1="12" x2="310" y2="268" stroke="#ffd700" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <text x="310" y="22" text-anchor="middle" fill="#ffd700" font-size="11" font-weight="bold" data-ja="オフサイドライン" data-en="Offside Line">オフサイドライン</text>
+    <!-- GK -->
+    <circle cx="65" cy="140" r="14" fill="#4fc3f7" stroke="white" stroke-width="1.5"/>
+    <text x="65" y="145" text-anchor="middle" fill="white" font-size="9" font-weight="bold">GK</text>
+    <!-- DFs pushed up at x=310 -->
+    <circle cx="310" cy="110" r="14" fill="#4fc3f7" stroke="#32cd32" stroke-width="2.5"/>
+    <text x="310" y="115" text-anchor="middle" fill="white" font-size="9" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <circle cx="310" cy="170" r="14" fill="#4fc3f7" stroke="#32cd32" stroke-width="2.5"/>
+    <text x="310" y="175" text-anchor="middle" fill="white" font-size="9" font-weight="bold" data-ja="DF" data-en="DF">DF</text>
+    <!-- Offside zone -->
+    <rect x="22" y="12" width="288" height="256" fill="rgba(248,113,113,0.08)" rx="2"/>
+    <text x="156" y="220" text-anchor="middle" fill="#f87171" font-size="11" data-ja="ここにいたらオフサイド" data-en="Offside if standing here">ここにいたらオフサイド</text>
+    <!-- FW in offside position (crossed out) -->
+    <circle cx="200" cy="140" r="15" fill="#f87171" stroke="#ff4444" stroke-width="2" opacity="0.5"/>
+    <text x="200" y="145" text-anchor="middle" fill="white" font-size="9" font-weight="bold" opacity="0.5">FW</text>
+    <line x1="187" y1="127" x2="213" y2="153" stroke="#ff4444" stroke-width="3"/>
+    <line x1="213" y1="127" x2="187" y2="153" stroke="#ff4444" stroke-width="3"/>
+    <text x="200" y="115" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold" data-ja="❌ まてない！" data-en="❌ Can't wait here!">❌ まてない！</text>
+    <!-- FW in onside position -->
+    <circle cx="360" cy="140" r="15" fill="#f87171" stroke="white" stroke-width="1.5"/>
+    <text x="360" y="145" text-anchor="middle" fill="white" font-size="9" font-weight="bold">FW</text>
+  </svg>
+
+  <div class="box box-good" data-ja="DFがあがると オフサイドラインもあがる → あいてのばしょがせまくなる！" data-en="DFs push up = Offside line goes up = Less space for the opponent!">DFがあがると オフサイドラインもあがる → あいてのばしょがせまくなる！</div>
+</div>
+
+<!-- ===== SLIDE 11: まとめ ===== -->
+<div class="slide" id="slide-11">
+  <div class="badge" data-ja="まとめ" data-en="Summary">まとめ</div>
+  <h2 data-ja="ポイントをおさらい！" data-en="Remember this!">ポイントをおさらい！</h2>
+
+  <ul class="summary-list">
+    <li data-ja-html="ボールがすすんだら <strong style='color:#ffd700;'>みんないっしょにあがる</strong>" data-en-html="When the ball goes forward, <strong style='color:#ffd700;'>everyone pushes up together!</strong>">ボールがすすんだら <strong style="color:#ffd700;">みんないっしょにあがる</strong></li>
+    <li data-ja-html="<strong style='color:#f87171;'>だれかがのこる</strong>と 大きなスペースができる" data-en-html="If <strong style='color:#f87171;'>anyone stays back</strong>, a huge space opens up"><strong style="color:#f87171;">だれかがのこる</strong>と 大きなスペースができる</li>
+    <li data-ja-html="みんなが まとまってうごくと スペースがなくなる" data-en-html="Everyone <strong style='color:#6dff6d;'>moving together</strong> closes down the space">みんなが まとまってうごくと スペースがなくなる</li>
+    <li data-ja-html="チームが <strong style='color:#6dff6d;'>コンパクト</strong>（あいだをつめてまもる）になることが 大切！" data-en-html="The team stays <strong style='color:#6dff6d;'>compact</strong> — closing down space together!">チームが <strong style="color:#6dff6d;">コンパクト</strong>（あいだをつめてまもる）になることが 大切！</li>
+  </ul>
+
+  <div class="box box-key" style="margin-top:8px; font-size:20px;" data-ja="🔑 ラインを上げるのは、あいてのスペースをなくすため！" data-en="🔑 We push up to take away the opponent's space!">🔑 ラインを上げるのは、あいてのスペースをなくすため！</div>
+
+  <p class="desc" style="font-size:16px; color:#5a88cc; margin-top:4px;" data-ja-html="「ラインコントロール」はDFでこえをかけあって 合わせることが 大切！<br>1人でもズレると 大きなピンチになるよ。" data-en-html="DFs call out to each other and move together!<br>If even one player is out of position, it's a big danger.">"ラインコントロール"はDFでこえをかけあって 合わせることが 大切！<br>1人でもズレると 大きなピンチになるよ。</p>
+</div>
+
+<!-- ===== SLIDE 12: クイズ ===== -->
+<div class="slide" id="slide-12">
+  <div class="badge" data-ja="クイズ！" data-en="Quiz!">クイズ！</div>
+  <h2 data-ja="どっちの 形が 正しい？" data-en="Which defensive shape is correct?">どっちの 形が 正しい？</h2>
+  <p class="sub" style="font-size:16px;" data-ja="クリックして答えをえらぼう！" data-en="Click to choose your answer!">クリックして答えをえらぼう！</p>
+
+  <div class="quiz-row">
+    <!-- Option A: Bad (both DFs stay back) -->
+    <div class="quiz-card" id="opt-a" onclick="answer('a')">
+      <div class="quiz-label">A</div>
+      <svg viewBox="0 0 280 160" style="width:100%;" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="6" width="260" height="148" fill="#2a7a3e" rx="3"/>
+        <rect x="10" y="6" width="260" height="148" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+        <line x1="140" y1="6" x2="140" y2="154" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+        <!-- Space highlight (hidden until answer) -->
+        <g id="hint-a" style="display:none">
+          <rect x="65" y="8" width="88" height="140" fill="rgba(255,140,0,0.3)" stroke="#ff8c00" stroke-width="1.5" stroke-dasharray="4,3" rx="4"/>
+          <text x="109" y="82" text-anchor="middle" fill="#ff8c00" font-size="9" font-weight="bold" data-ja="スペース" data-en="Space">スペース</text>
+        </g>
+        <!-- GK -->
+        <circle cx="26" cy="78" r="10" fill="#4fc3f7"/><text x="26" y="82" text-anchor="middle" fill="white" font-size="7">GK</text>
+        <!-- Both DFs staying back -->
+        <circle cx="61" cy="42" r="10" fill="#4fc3f7" stroke="#ff8c00" stroke-width="2"/><text x="61" y="46" text-anchor="middle" fill="white" font-size="6" data-ja="DF" data-en="DF">DF</text>
+        <circle cx="61" cy="114" r="10" fill="#4fc3f7" stroke="#ff8c00" stroke-width="2"/><text x="61" y="118" text-anchor="middle" fill="white" font-size="6" data-ja="DF" data-en="DF">DF</text>
+        <!-- MF -->
+        <circle cx="157" cy="68" r="10" fill="#4fc3f7"/><text x="157" y="72" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <circle cx="157" cy="98" r="10" fill="#4fc3f7"/><text x="157" y="102" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <!-- FW -->
+        <circle cx="200" cy="78" r="10" fill="#4fc3f7"/><text x="200" y="82" text-anchor="middle" fill="white" font-size="7">FW</text>
+        <!-- Red -->
+        <circle cx="255" cy="78" r="10" fill="#f87171"/><text x="255" y="82" text-anchor="middle" fill="white" font-size="7">GK</text>
+        <circle cx="175" cy="78" r="10" fill="#f87171"/><text x="175" y="82" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <!-- Ball -->
+        <text x="210" y="78" text-anchor="middle" dominant-baseline="central" font-size="12">⚽</text>
+      </svg>
+      <p style="font-size:13px; color:#8ab4e8; margin-top:8px;" data-ja="2人のDFが後ろに のこっている" data-en="DFs stayed back">2人のDFが後ろに のこっている</p>
+    </div>
+
+    <!-- Option B: Good (both DFs aligned) -->
+    <div class="quiz-card" id="opt-b" onclick="answer('b')">
+      <div class="quiz-label">B</div>
+      <svg viewBox="0 0 280 160" style="width:100%;" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="6" width="260" height="148" fill="#2a7a3e" rx="3"/>
+        <rect x="10" y="6" width="260" height="148" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+        <line x1="140" y1="6" x2="140" y2="154" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+        <!-- Compact highlight (hidden until answer) -->
+        <g id="hint-b" style="display:none">
+          <rect x="122" y="14" width="118" height="132" fill="rgba(50,205,50,0.15)" stroke="#32cd32" stroke-width="1.5" stroke-dasharray="4,3" rx="4"/>
+          <text x="145" y="82" text-anchor="middle" fill="#32cd32" font-size="9" font-weight="bold" data-ja="コンパクト" data-en="Compact">コンパクト</text>
+        </g>
+        <!-- GK -->
+        <circle cx="26" cy="78" r="10" fill="#4fc3f7"/><text x="26" y="82" text-anchor="middle" fill="white" font-size="7">GK</text>
+        <!-- Both DFs aligned -->
+        <circle cx="143" cy="50" r="10" fill="#4fc3f7" stroke="#32cd32" stroke-width="2"/><text x="143" y="54" text-anchor="middle" fill="white" font-size="6" data-ja="DF" data-en="DF">DF</text>
+        <circle cx="143" cy="106" r="10" fill="#4fc3f7" stroke="#32cd32" stroke-width="2"/><text x="143" y="110" text-anchor="middle" fill="white" font-size="6" data-ja="DF" data-en="DF">DF</text>
+        <!-- MF -->
+        <circle cx="168" cy="58" r="10" fill="#4fc3f7"/><text x="168" y="62" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <circle cx="168" cy="98" r="10" fill="#4fc3f7"/><text x="168" y="102" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <!-- FW -->
+        <circle cx="208" cy="78" r="10" fill="#4fc3f7"/><text x="208" y="82" text-anchor="middle" fill="white" font-size="7">FW</text>
+        <!-- Red -->
+        <circle cx="255" cy="78" r="10" fill="#f87171"/><text x="255" y="82" text-anchor="middle" fill="white" font-size="7">GK</text>
+        <circle cx="180" cy="78" r="10" fill="#f87171"/><text x="180" y="82" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <!-- Ball -->
+        <text x="218" y="78" text-anchor="middle" dominant-baseline="central" font-size="12">⚽</text>
+      </svg>
+      <p style="font-size:13px; color:#8ab4e8; margin-top:8px;" data-ja="DFがラインを上げた" data-en="DFs pushed up the line">DFがラインを上げた</p>
+    </div>
+  </div>
+
+  <div class="answer-msg" id="answer-msg" data-ja="🎉 せいかいは B！ラインを上げると スペースがなくなって まもりやすくなる！" data-en="🎉 The answer is B! When DFs push up, the space disappears and it's much easier to defend!">
+    🎉 せいかいは B！ラインを上げると スペースがなくなって まもりやすくなる！
+  </div>
+</div>
+
+<!-- ===== SLIDE 13: クイズ解答 ===== -->
+<div class="slide" id="slide-13">
+  <div class="badge" data-ja="せいかいはっぴょう！" data-en="Answer!">せいかいはっぴょう！</div>
+  <h2 data-ja="せいかいは B！" data-en="The Answer is B!">せいかいは B！</h2>
+
+  <div class="quiz-row">
+    <!-- Option A: Wrong -->
+    <div class="quiz-card wrong">
+      <div class="quiz-label">A</div>
+      <svg viewBox="0 0 280 160" style="width:100%;" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="6" width="260" height="148" fill="#2a7a3e" rx="3"/>
+        <rect x="10" y="6" width="260" height="148" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+        <line x1="140" y1="6" x2="140" y2="154" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+        <!-- Space highlight visible -->
+        <rect x="65" y="8" width="88" height="140" fill="rgba(255,140,0,0.3)" stroke="#ff8c00" stroke-width="1.5" stroke-dasharray="4,3" rx="4"/>
+        <text x="109" y="82" text-anchor="middle" fill="#ff8c00" font-size="9" font-weight="bold" data-ja="スペース" data-en="Space">スペース</text>
+        <!-- GK -->
+        <circle cx="26" cy="78" r="10" fill="#4fc3f7"/><text x="26" y="82" text-anchor="middle" fill="white" font-size="7">GK</text>
+        <!-- Both DFs staying back -->
+        <circle cx="61" cy="42" r="10" fill="#4fc3f7" stroke="#ff8c00" stroke-width="2"/><text x="61" y="46" text-anchor="middle" fill="white" font-size="6" data-ja="DF" data-en="DF">DF</text>
+        <circle cx="61" cy="114" r="10" fill="#4fc3f7" stroke="#ff8c00" stroke-width="2"/><text x="61" y="118" text-anchor="middle" fill="white" font-size="6" data-ja="DF" data-en="DF">DF</text>
+        <!-- MF -->
+        <circle cx="157" cy="68" r="10" fill="#4fc3f7"/><text x="157" y="72" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <circle cx="157" cy="98" r="10" fill="#4fc3f7"/><text x="157" y="102" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <!-- FW -->
+        <circle cx="200" cy="78" r="10" fill="#4fc3f7"/><text x="200" y="82" text-anchor="middle" fill="white" font-size="7">FW</text>
+        <!-- Red -->
+        <circle cx="255" cy="78" r="10" fill="#f87171"/><text x="255" y="82" text-anchor="middle" fill="white" font-size="7">GK</text>
+        <circle cx="175" cy="78" r="10" fill="#f87171"/><text x="175" y="82" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <!-- Ball -->
+        <text x="210" y="78" text-anchor="middle" dominant-baseline="central" font-size="12">⚽</text>
+      </svg>
+      <p style="font-size:13px; color:#f87171; margin-top:8px;" data-ja="❌ DFが後ろに のこったまま" data-en="❌ DFs stayed back">❌ DFが後ろに のこったまま</p>
+    </div>
+
+    <!-- Option B: Correct -->
+    <div class="quiz-card correct">
+      <div class="quiz-label">B</div>
+      <svg viewBox="0 0 280 160" style="width:100%;" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="6" width="260" height="148" fill="#2a7a3e" rx="3"/>
+        <rect x="10" y="6" width="260" height="148" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+        <line x1="140" y1="6" x2="140" y2="154" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+        <!-- Compact highlight visible -->
+        <rect x="122" y="14" width="118" height="132" fill="rgba(50,205,50,0.15)" stroke="#32cd32" stroke-width="1.5" stroke-dasharray="4,3" rx="4"/>
+        <text x="145" y="82" text-anchor="middle" fill="#32cd32" font-size="9" font-weight="bold" data-ja="コンパクト" data-en="Compact">コンパクト</text>
+        <!-- GK -->
+        <circle cx="26" cy="78" r="10" fill="#4fc3f7"/><text x="26" y="82" text-anchor="middle" fill="white" font-size="7">GK</text>
+        <!-- Both DFs aligned -->
+        <circle cx="143" cy="50" r="10" fill="#4fc3f7" stroke="#32cd32" stroke-width="2"/><text x="143" y="54" text-anchor="middle" fill="white" font-size="6" data-ja="DF" data-en="DF">DF</text>
+        <circle cx="143" cy="106" r="10" fill="#4fc3f7" stroke="#32cd32" stroke-width="2"/><text x="143" y="110" text-anchor="middle" fill="white" font-size="6" data-ja="DF" data-en="DF">DF</text>
+        <!-- MF -->
+        <circle cx="168" cy="58" r="10" fill="#4fc3f7"/><text x="168" y="62" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <circle cx="168" cy="98" r="10" fill="#4fc3f7"/><text x="168" y="102" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <!-- FW -->
+        <circle cx="208" cy="78" r="10" fill="#4fc3f7"/><text x="208" y="82" text-anchor="middle" fill="white" font-size="7">FW</text>
+        <!-- Red -->
+        <circle cx="255" cy="78" r="10" fill="#f87171"/><text x="255" y="82" text-anchor="middle" fill="white" font-size="7">GK</text>
+        <circle cx="180" cy="78" r="10" fill="#f87171"/><text x="180" y="82" text-anchor="middle" fill="white" font-size="7">MF</text>
+        <!-- Ball -->
+        <text x="218" y="78" text-anchor="middle" dominant-baseline="central" font-size="12">⚽</text>
+      </svg>
+      <p style="font-size:13px; color:#32cd32; margin-top:8px;" data-ja="✅ DFがラインを上げた" data-en="✅ DFs pushed up the line">✅ DFがラインを上げた</p>
+    </div>
+  </div>
+
+  <div class="answer-msg show" data-ja="🎉 せいかいは B！ラインを上げると スペースがなくなって まもりやすくなる！" data-en="🎉 The answer is B! When DFs push up, the space disappears and it's much easier to defend!">
+    🎉 せいかいは B！ラインを上げると スペースがなくなって まもりやすくなる！
+  </div>
+</div>
+
+<!-- ===== NAV ===== -->
+<div class="nav">
+  <button id="btn-prev" onclick="move(-1)" disabled data-ja="◀ もどる" data-en="◀ Back">◀ もどる</button>
+  <span class="page-num" id="page-num">1 / 12</span>
+  <button id="btn-next" onclick="move(1)" data-ja="つぎへ ▶" data-en="Next ▶">つぎへ ▶</button>
+  <button id="lang-btn" onclick="toggleLang()">EN</button>
+</div>
+
+<script>
+const TOTAL = 12;
+let current = 1;
+let lang = 'ja';
+
+function showSlide(n) {
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  document.getElementById('slide-' + n).classList.add('active');
+  document.getElementById('page-num').textContent = n + ' / ' + TOTAL;
+  document.getElementById('btn-prev').disabled = (n === 1);
+  document.getElementById('btn-next').disabled = (n === TOTAL);
+}
+
+function move(dir) {
+  const next = current + dir;
+  if (next < 1 || next > TOTAL) return;
+  current = next;
+  showSlide(current);
+}
+
+function answer(choice) {
+  if (document.getElementById('opt-a').classList.contains('correct') ||
+      document.getElementById('opt-a').classList.contains('wrong')) return;
+  if (choice === 'b') {
+    document.getElementById('opt-b').classList.add('correct');
+    document.getElementById('opt-a').classList.add('wrong');
+  } else {
+    document.getElementById('opt-a').classList.add('wrong');
+    document.getElementById('opt-b').classList.add('correct');
+  }
+  const msg = document.getElementById('answer-msg');
+  msg.classList.add('show');
+  document.getElementById('hint-a').style.display = '';
+  document.getElementById('hint-b').style.display = '';
+}
+
+function toggleLang() {
+  lang = lang === 'ja' ? 'en' : 'ja';
+  document.getElementById('lang-btn').textContent = lang === 'ja' ? 'EN' : 'JP';
+  // Plain text elements (including SVG text)
+  document.querySelectorAll('[data-ja]').forEach(el => {
+    el.textContent = lang === 'en' ? (el.dataset.en || el.dataset.ja) : el.dataset.ja;
+  });
+  // HTML elements (with inline tags like <strong>, <br>)
+  document.querySelectorAll('[data-ja-html]').forEach(el => {
+    el.innerHTML = lang === 'en' ? (el.dataset.enHtml || el.dataset.jaHtml) : el.dataset.jaHtml;
+  });
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') move(1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   move(-1);
+});
+
+// スワイプ操作（スマホ対応）- ピンチ操作中はページ送りしない
+let touchStartX = 0;
+let isPinching = false;
+document.addEventListener('touchstart', e => {
+  if (e.touches.length > 1) { isPinching = true; return; }
+  if (!isPinching) touchStartX = e.touches[0].clientX;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (isPinching) {
+    if (e.touches.length === 0) isPinching = false; // 全指が離れたらリセット
+    return;
+  }
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) move(dx < 0 ? 1 : -1);
+}, { passive: true });
+
+// スマホの場合はヒント文を変更
+if ('ontouchstart' in window) {
+  const hint = document.getElementById('nav-hint');
+  if (hint) {
+    hint.dataset.ja = 'スワイプまたはボタンで進む';
+    hint.dataset.en = 'Swipe or use buttons to navigate';
+    hint.textContent = 'スワイプまたはボタンで進む';
+  }
+}
+
+// 全スライドの高さを測定して最大値をmin-heightに設定（PC幅のみ）
+window.addEventListener('load', () => {
+  if (window.innerWidth <= 600) return; // スマホは各スライドの自然な高さにする
+  const slides = document.querySelectorAll('.slide');
+  let maxH = 0;
+  slides.forEach(s => {
+    s.style.display = 'flex';
+    maxH = Math.max(maxH, s.scrollHeight);
+    s.style.display = '';
+  });
+  slides.forEach(s => s.style.minHeight = maxH + 'px');
+  showSlide(1);
+});
+</script>
+</body>
+</html>
